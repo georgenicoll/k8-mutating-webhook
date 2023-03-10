@@ -1,11 +1,26 @@
-use std::net::SocketAddr;
+use std::net::{SocketAddr, IpAddr};
 
+use clap::Parser;
 use http_body_util::{Full, combinators::BoxBody, Empty, BodyExt};
 use hyper::{Request, Response, body::{Bytes, Incoming, Frame}, server::conn::http1, service::service_fn, Method, StatusCode};
 use tokio::net::TcpListener;
 
 mod resource;
 mod templates;
+
+#[derive(Parser,Debug)]
+struct Args {
+    #[arg(short, long, default_value_t = String::from("log4rs.yml"))]
+    log_file: String,
+    #[arg(short, long, default_value_t = String::from("127.0.0.1"))]
+    address: String,
+    #[arg(short, long, default_value_t = 3000)]
+    port: u16,
+}
+
+fn set_up_logging(args: &Args) {
+    log4rs::init_file(&args.log_file, Default::default()).unwrap();
+}
 
 async fn echo(
     req: Request<Incoming>
@@ -51,9 +66,10 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
         .boxed()
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+async fn run_server(args: &Args) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    log::info!("Setting up server on {}:{}", args.address, args.port);
+    let ip_addr: IpAddr = args.address.parse().unwrap();
+    let addr = SocketAddr::new(ip_addr, args.port);
 
     let listener = TcpListener::bind(addr).await?;
 
@@ -65,8 +81,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .serve_connection(stream, service_fn(echo))
                 .await
             {
-                println!("Error serving connection: {:?}", err);
+                log::error!("Error serving connection: {:?}", err);
             }
         });
     }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let args = Args::parse();
+    println!("config: {:?}", args);
+    set_up_logging(&args);
+    run_server(&args).await
 }
