@@ -29,7 +29,7 @@ impl fmt::Display for ObjectMeta {
 }
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource<T> {
     pub api_version: String,

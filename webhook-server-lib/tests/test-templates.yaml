@@ -1,0 +1,20 @@
+templates:
+  - apiVersion: v2
+    kind: Pob
+    metadata:
+      name: Pobbly
+      namespace: not-default
+      labels:
+        sex: male
+        ages: 22
+      annotations:
+        io.kube.label1: silly
+  - apiVersion: v2
+    kind: Barb
+    metadata:
+      name: Wire
+      namespace: fences
+      labels:
+        material: steel
+      annotations:
+        io.kube.label1: scratchy

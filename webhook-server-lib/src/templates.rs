@@ -2,8 +2,9 @@ use serde::Deserialize;
 
 use crate::resource::Resource;
 
-struct Template {
-    resource: Resource<serde_json::Value>,
+#[derive(Clone)]
+pub struct Template {
+    pub resource: Resource<serde_json::Value>,
 }
 
 impl Template {
@@ -41,8 +42,9 @@ impl Template {
 
 }
 
+#[derive(Clone)]
 pub struct Templates {
-    templates: Vec<Template>,
+    pub templates: Vec<Template>,
 }
 
 #[derive(Deserialize)]
@@ -61,7 +63,7 @@ impl Templates {
             .next()
     }
 
-    pub fn construct_templates(yaml: &str) -> Result<Templates, String> {
+    fn construct_templates(yaml: &str) -> Result<Templates, String> {
         let templates_result = serde_yaml::from_str(yaml)
             .map(|config_templates: ConfigTemplates| Templates {
                     templates: config_templates.templates.iter()
@@ -72,6 +74,12 @@ impl Templates {
             Ok(templates) => Ok(templates),
             Err(err) => Err(err.to_string()),
         }
+    }
+
+    pub fn from_file(file_name: &str) -> Result<Templates, String> {
+      std::fs::read_to_string(file_name)
+        .map_err(|err| err.to_string())
+        .and_then(|s| Self::construct_templates(&s))
     }
 
 }
@@ -256,6 +264,39 @@ mod tests {
               name: admin
         "#;
         Templates::construct_templates(yaml).unwrap()
+    }
+
+    #[test]
+    fn load_from_file() {
+      let path = std::env::current_dir().unwrap();
+      println!("Current Directory: {}", path.display());
+      let templates = Templates::from_file("example-templates.yaml").unwrap();
+      assert_eq!(2, templates.len());
+      let pob = Resource::from_yaml(r#"
+      apiVersion: v2
+      kind: Pob
+      metadata:
+        name: Pobbly
+        namespace: not-default
+        labels:
+          sex: male
+          ages: 22
+        annotations:
+          io.kube.label1: silly
+      "#).unwrap().convert_to_json();
+      let barb = Resource::from_yaml(r#"
+      apiVersion: v2
+      kind: Barb
+      metadata:
+        name: Wire
+        namespace: fences
+        labels:
+          material: steel
+        annotations:
+          io.kube.label1: scratchy
+      "#).unwrap().convert_to_json();
+      assert_eq!(templates.templates[0].resource, pob);
+      assert_eq!(templates.templates[1].resource, barb);
     }
 
 }

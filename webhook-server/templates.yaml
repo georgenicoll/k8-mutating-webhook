@@ -1,0 +1,11 @@
+templates:
+  - apiVersion: v2
+    kind: Pod
+    metadata:
+      name: Pobbly
+      namespace: not-default
+      labels:
+        sex: male
+        ages: 22
+      annotations:
+        io.kube.label1: silly
